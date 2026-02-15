@@ -47,8 +47,21 @@ export async function encryptText(plaintext: string, password: string): Promise<
   combined.set(iv, salt.length);
   combined.set(new Uint8Array(ciphertext), salt.length + iv.length);
 
-  // Base64 encode for NFC storage
-  return btoa(String.fromCharCode(...combined));
+  // Base64 encode for NFC storage (chunked to avoid call-stack limits)
+  return arrayBufferToBase64(combined.buffer);
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    for (let j = 0; j < chunk.length; j++) {
+      binary += String.fromCharCode(chunk[j]);
+    }
+  }
+  return btoa(binary);
 }
 
 export async function decryptText(encoded: string, password: string): Promise<string> {
@@ -72,5 +85,5 @@ export async function decryptText(encoded: string, password: string): Promise<st
 // Generate a random password for biometric-based flow
 export function generateRandomPassword(): string {
   const array = crypto.getRandomValues(new Uint8Array(32));
-  return btoa(String.fromCharCode(...array));
+  return arrayBufferToBase64(array.buffer);
 }

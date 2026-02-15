@@ -53,61 +53,29 @@ export async function writeToNfc(data: string): Promise<void> {
     throw new Error("NFC is not supported on this device/browser. Use Android Chrome.");
   }
 
-  // Use existing session or create one
-  let ndef = activeNdef;
-  let ownAbort: AbortController | null = null;
+  const ndef = new (window as any).NDEFReader();
+  const encoder = new TextEncoder();
 
-  if (!ndef) {
-    ndef = new (window as any).NDEFReader();
-    ownAbort = new AbortController();
-    await ndef.scan({ signal: ownAbort.signal });
-  }
-
-  const signal = ownAbort?.signal ?? activeAbort?.signal;
-
-  try {
-    await new Promise<void>((resolve, reject) => {
-      if (signal) {
-        signal.addEventListener("abort", () => reject(new Error("Aborted")));
-      }
-
-      ndef.addEventListener("reading", async () => {
-        try {
-          const encoder = new TextEncoder();
-          await ndef.write(
-            {
-              records: [
-                // MIME record holds the encrypted data
-                {
-                  recordType: "mime",
-                  mediaType: MIME_TYPE,
-                  data: encoder.encode(data),
-                },
-                // Short URL record enables auto-open when tapped outside the app
-                {
-                  recordType: "url",
-                  data: APP_URL,
-                },
-              ],
-            },
-            { overwrite: true, ...(signal ? { signal } : {}) }
-          );
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      }, { once: true });
-
-      ndef.addEventListener("readingerror", () => {
-        reject(new Error("Could not read NFC tag. Try repositioning."));
-      }, { once: true });
-    });
-  } finally {
-    // Only release if we created our own session
-    if (ownAbort) {
-      ownAbort.abort();
-    }
-  }
+  // write() itself waits for a tag to come into range – no need to
+  // listen for a "reading" event first.  Using a fresh NDEFReader
+  // avoids conflicts with the scan-only session used for adapter
+  // claiming.
+  await ndef.write(
+    {
+      records: [
+        {
+          recordType: "mime",
+          mediaType: MIME_TYPE,
+          data: encoder.encode(data),
+        },
+        {
+          recordType: "url",
+          data: APP_URL,
+        },
+      ],
+    },
+    { overwrite: true }
+  );
 }
 
 export async function readFromNfc(
