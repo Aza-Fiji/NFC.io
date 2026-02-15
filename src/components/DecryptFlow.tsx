@@ -14,10 +14,9 @@ type Step = "scan" | "auth" | "result" | "error";
 
 interface Props {
   onBack: () => void;
-  initialData?: string | null;
 }
 
-const DecryptFlow = ({ onBack, initialData }: Props) => {
+const DecryptFlow = ({ onBack }: Props) => {
   const [step, setStep] = useState<Step>("scan");
   const [encryptedData, setEncryptedData] = useState("");
   const [password, setPassword] = useState("");
@@ -42,14 +41,8 @@ const DecryptFlow = ({ onBack, initialData }: Props) => {
     }
   };
 
-  // Start scanning on mount, or skip if data was passed via URL
   useState(() => {
-    if (initialData) {
-      setEncryptedData(initialData);
-      setStep("auth");
-    } else {
-      startScan();
-    }
+    startScan();
   });
 
   const handleDecrypt = async () => {
