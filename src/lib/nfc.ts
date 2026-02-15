@@ -74,20 +74,19 @@ export async function writeToNfc(data: string): Promise<void> {
       ndef.addEventListener("reading", async () => {
         try {
           const encoder = new TextEncoder();
-          const url = `${APP_URL}?data=${encodeURIComponent(data)}`;
           await ndef.write(
             {
               records: [
-                // MIME record holds the data (won't trigger Android's URL handler)
+                // MIME record holds the encrypted data
                 {
                   recordType: "mime",
                   mediaType: MIME_TYPE,
                   data: encoder.encode(data),
                 },
-                // URL record enables auto-open when tapped outside the app
+                // Short URL record enables auto-open when tapped outside the app
                 {
                   recordType: "url",
-                  data: url,
+                  data: APP_URL,
                 },
               ],
             },
