@@ -5,6 +5,7 @@ export function isNfcSupported(): boolean {
 }
 
 const MIME_TYPE = "application/x-nfc-vault";
+const APP_URL = "https://bio-vault-pocket.lovable.app";
 
 // ── Persistent NFC session ──────────────────────────────────────────
 // Claiming the adapter as early as possible gives Chrome priority over
@@ -73,13 +74,20 @@ export async function writeToNfc(data: string): Promise<void> {
       ndef.addEventListener("reading", async () => {
         try {
           const encoder = new TextEncoder();
+          const url = `${APP_URL}?data=${encodeURIComponent(data)}`;
           await ndef.write(
             {
               records: [
+                // MIME record holds the data (won't trigger Android's URL handler)
                 {
                   recordType: "mime",
                   mediaType: MIME_TYPE,
                   data: encoder.encode(data),
+                },
+                // URL record enables auto-open when tapped outside the app
+                {
+                  recordType: "url",
+                  data: url,
                 },
               ],
             },
