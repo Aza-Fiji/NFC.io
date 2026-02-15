@@ -50,7 +50,17 @@ const DecryptFlow = ({ onBack }: Props) => {
     try {
       let key = password;
       if (authMethod === "bio") {
-        const ok = await authenticateBiometric();
+        let ok: boolean;
+        try {
+          ok = await authenticateBiometric();
+        } catch (bioErr: any) {
+          const msg = bioErr.message?.includes("not enabled in this document")
+            ? "Biometric auth isn't available in this browser context. Please install the app on your Android device and try again."
+            : bioErr.message || "Biometric error.";
+          setErrorMsg(msg);
+          setStep("error");
+          return;
+        }
         if (!ok) {
           setErrorMsg("Biometric authentication failed.");
           setStep("error");

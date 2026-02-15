@@ -40,7 +40,10 @@ const EncryptFlow = ({ onBack }: Props) => {
         localStorage.setItem("nfc-vault-bio-key", bioPassword);
         await startWrite(bioPassword);
       } catch (e: any) {
-        setErrorMsg(e.message || "Biometric error.");
+        const msg = e.message?.includes("not enabled in this document")
+          ? "Biometric auth isn't available in this browser context. Please install the app on your Android device and try again."
+          : e.message || "Biometric error.";
+        setErrorMsg(msg);
         setStep("error");
       }
     } else {
