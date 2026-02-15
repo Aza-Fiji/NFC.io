@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, PenLine, ScanLine } from "lucide-react";
+import { Lock, PenLine, ScanLine, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import EncryptFlow from "@/components/EncryptFlow";
 import DecryptFlow from "@/components/DecryptFlow";
+import KeyBackup from "@/components/KeyBackup";
 
-type View = "home" | "encrypt" | "decrypt";
+type View = "home" | "encrypt" | "decrypt" | "backup";
 
 const Index = () => {
   const [view, setView] = useState<View>("home");
@@ -55,6 +56,16 @@ const Index = () => {
                   <ScanLine className="h-5 w-5" />
                   Read &amp; Decrypt
                 </Button>
+
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-14 gap-3 rounded-2xl text-base font-semibold border-2 border-primary/10"
+                  onClick={() => setView("backup")}
+                >
+                  <Shield className="h-5 w-5" />
+                  Key Backup
+                </Button>
               </div>
             </motion.div>
           )}
@@ -82,6 +93,19 @@ const Index = () => {
               className="flex flex-1 flex-col pt-6"
             >
               <DecryptFlow onBack={() => setView("home")} />
+            </motion.div>
+          )}
+
+          {view === "backup" && (
+            <motion.div
+              key="backup"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -40 }}
+              transition={{ duration: 0.25 }}
+              className="flex flex-1 flex-col pt-6"
+            >
+              <KeyBackup onBack={() => setView("home")} />
             </motion.div>
           )}
         </AnimatePresence>

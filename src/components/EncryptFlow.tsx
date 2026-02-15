@@ -146,6 +146,13 @@ const EncryptFlow = ({ onBack }: Props) => {
                   </button>
                 </div>
 
+                {authMethod === "bio" && (
+                  <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                    <p className="font-medium mb-1">⚠️ Device-bound key</p>
+                    <p>Biometric encryption stores the key on this device only. If you switch phones, you won't be able to decrypt. Consider backing up your key from the home screen.</p>
+                  </div>
+                )}
+
                 {authMethod === "password" && (
                   <Input
                     type="password"
