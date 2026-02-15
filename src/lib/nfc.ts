@@ -15,14 +15,25 @@ export async function writeToNfc(data: string): Promise<void> {
   const url = `${APP_URL}?data=${encodeURIComponent(data)}`;
 
   const ndef = new (window as any).NDEFReader();
-  await ndef.write({
-    records: [
-      {
-        recordType: "url",
-        data: url,
-      },
-    ],
-  });
+
+  // Start scanning first to claim the NFC adapter from Android OS.
+  // This acts like Android's "foreground dispatch" — it prevents the OS
+  // from intercepting the tag before we can write to it.
+  const abortController = new AbortController();
+  try {
+    await ndef.scan({ signal: abortController.signal });
+    await ndef.write({
+      records: [
+        {
+          recordType: "url",
+          data: url,
+        },
+      ],
+    });
+  } finally {
+    // Release the NFC adapter claim
+    abortController.abort();
+  }
 }
 
 export async function readFromNfc(
