@@ -20,18 +20,39 @@ export async function writeToNfc(data: string): Promise<void> {
   // This acts like Android's "foreground dispatch" — it prevents the OS
   // from intercepting the tag before we can write to it.
   const abortController = new AbortController();
+  const { signal } = abortController;
   try {
-    await ndef.scan({ signal: abortController.signal });
-    await ndef.write({
-      records: [
-        {
-          recordType: "url",
-          data: url,
-        },
-      ],
+    // Claim the NFC adapter so Android OS won't dispatch the tag itself.
+    await ndef.scan({ signal });
+
+    // Wait for a tag to actually appear, then write immediately.
+    await new Promise<void>((resolve, reject) => {
+      signal.addEventListener("abort", () => reject(new Error("Aborted")));
+
+      ndef.addEventListener("reading", async () => {
+        try {
+          await ndef.write(
+            {
+              records: [
+                {
+                  recordType: "url",
+                  data: url,
+                },
+              ],
+            },
+            { overwrite: true, signal }
+          );
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      }, { once: true });
+
+      ndef.addEventListener("readingerror", () => {
+        reject(new Error("Could not read NFC tag. Try repositioning."));
+      }, { once: true });
     });
   } finally {
-    // Release the NFC adapter claim
     abortController.abort();
   }
 }
