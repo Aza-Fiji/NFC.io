@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, PenLine, ScanLine, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,18 +10,6 @@ type View = "home" | "encrypt" | "decrypt" | "backup";
 
 const Index = () => {
   const [view, setView] = useState<View>("home");
-  const [autoDecryptData, setAutoDecryptData] = useState<string | null>(null);
-
-  // Auto-detect ?data= parameter from NFC tag URL
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const data = params.get("data");
-    if (data) {
-      setAutoDecryptData(data);
-      setView("decrypt");
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, []);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -104,7 +92,7 @@ const Index = () => {
               transition={{ duration: 0.25 }}
               className="flex flex-1 flex-col pt-6"
             >
-              <DecryptFlow onBack={() => { setAutoDecryptData(null); setView("home"); }} initialData={autoDecryptData} />
+              <DecryptFlow onBack={() => setView("home")} />
             </motion.div>
           )}
 
