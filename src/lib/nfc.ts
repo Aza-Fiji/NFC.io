@@ -4,17 +4,22 @@ export function isNfcSupported(): boolean {
   return "NDEFReader" in window;
 }
 
+const APP_URL = "https://bio-vault-pocket.lovable.app";
+
 export async function writeToNfc(data: string): Promise<void> {
   if (!isNfcSupported()) {
     throw new Error("NFC is not supported on this device/browser. Use Android Chrome.");
   }
 
+  // Build a URL that will auto-open the app with encrypted data
+  const url = `${APP_URL}?data=${encodeURIComponent(data)}`;
+
   const ndef = new (window as any).NDEFReader();
   await ndef.write({
     records: [
       {
-        recordType: "text",
-        data: data,
+        recordType: "url",
+        data: url,
       },
     ],
   });
