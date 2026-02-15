@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Fingerprint, KeyRound, Nfc, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { encryptText, generateRandomPassword } from "@/lib/crypto";
-import { writeToNfc, isNfcSupported } from "@/lib/nfc";
+import { writeToNfc, isNfcSupported, claimNfcAdapter, releaseNfcAdapter } from "@/lib/nfc";
 import { authenticateBiometric, registerBiometric, hasBiometricRegistered, isBiometricSupported } from "@/lib/biometrics";
 import NfcPulse from "@/components/NfcPulse";
 
@@ -22,6 +22,13 @@ const EncryptFlow = ({ onBack }: Props) => {
   const [password, setPassword] = useState("");
   const [authMethod, setAuthMethod] = useState<"bio" | "password" | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Claim the NFC adapter as soon as the user enters the encrypt flow.
+  // This prevents Android OS from intercepting NFC tags.
+  useEffect(() => {
+    claimNfcAdapter().catch(() => {});
+    return () => releaseNfcAdapter();
+  }, []);
 
   const handleAuth = async () => {
     if (authMethod === "bio") {
