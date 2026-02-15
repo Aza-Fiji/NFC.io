@@ -6,26 +6,72 @@ export function isNfcSupported(): boolean {
 
 const MIME_TYPE = "application/x-nfc-vault";
 
+// ── Persistent NFC session ──────────────────────────────────────────
+// Claiming the adapter as early as possible gives Chrome priority over
+// Android's native NFC tag dispatch ("Open link?" / NFC service).
+// The session stays active until explicitly released.
+
+let activeNdef: any = null;
+let activeAbort: AbortController | null = null;
+
+/**
+ * Start an NFC scan session to claim the adapter from the OS.
+ * Call this as early as possible (e.g. when the encrypt/decrypt UI mounts).
+ * Returns a cleanup function to release the adapter.
+ */
+export async function claimNfcAdapter(): Promise<() => void> {
+  if (!isNfcSupported()) return () => {};
+
+  // If already claimed, don't re-claim
+  if (activeNdef) return () => releaseNfcAdapter();
+
+  const ndef = new (window as any).NDEFReader();
+  const abort = new AbortController();
+
+  await ndef.scan({ signal: abort.signal });
+
+  activeNdef = ndef;
+  activeAbort = abort;
+
+  return () => releaseNfcAdapter();
+}
+
+export function releaseNfcAdapter() {
+  activeAbort?.abort();
+  activeNdef = null;
+  activeAbort = null;
+}
+
+/**
+ * Write encrypted data to an NFC tag as a custom MIME record.
+ * Expects the adapter to already be claimed via claimNfcAdapter().
+ * Falls back to claiming on-the-fly if not.
+ */
 export async function writeToNfc(data: string): Promise<void> {
   if (!isNfcSupported()) {
     throw new Error("NFC is not supported on this device/browser. Use Android Chrome.");
   }
 
-  const ndef = new (window as any).NDEFReader();
+  // Use existing session or create one
+  let ndef = activeNdef;
+  let ownAbort: AbortController | null = null;
 
-  // Claim the NFC adapter via scan() so Android OS won't intercept the tag.
-  const abortController = new AbortController();
-  const { signal } = abortController;
+  if (!ndef) {
+    ndef = new (window as any).NDEFReader();
+    ownAbort = new AbortController();
+    await ndef.scan({ signal: ownAbort.signal });
+  }
+
+  const signal = ownAbort?.signal ?? activeAbort?.signal;
+
   try {
-    await ndef.scan({ signal });
-
-    // Wait for a tag to appear, then write immediately.
     await new Promise<void>((resolve, reject) => {
-      signal.addEventListener("abort", () => reject(new Error("Aborted")));
+      if (signal) {
+        signal.addEventListener("abort", () => reject(new Error("Aborted")));
+      }
 
       ndef.addEventListener("reading", async () => {
         try {
-          // Use a custom MIME type so Android doesn't show "Open link?" dialogs.
           const encoder = new TextEncoder();
           await ndef.write(
             {
@@ -37,7 +83,7 @@ export async function writeToNfc(data: string): Promise<void> {
                 },
               ],
             },
-            { overwrite: true, signal }
+            { overwrite: true, ...(signal ? { signal } : {}) }
           );
           resolve();
         } catch (err) {
@@ -50,7 +96,10 @@ export async function writeToNfc(data: string): Promise<void> {
       }, { once: true });
     });
   } finally {
-    abortController.abort();
+    // Only release if we created our own session
+    if (ownAbort) {
+      ownAbort.abort();
+    }
   }
 }
 
@@ -63,18 +112,20 @@ export async function readFromNfc(
 
   return new Promise(async (resolve, reject) => {
     try {
-      const ndef = new (window as any).NDEFReader();
-      await ndef.scan({ signal });
+      // Prefer the already-claimed adapter
+      let ndef = activeNdef;
+      if (!ndef) {
+        ndef = new (window as any).NDEFReader();
+        await ndef.scan({ signal });
+      }
 
       ndef.addEventListener("reading", ({ message }: any) => {
         for (const record of message.records) {
-          // Handle our custom MIME records
           if (record.recordType === "mime" && record.mediaType === MIME_TYPE) {
             const decoder = new TextDecoder("utf-8");
             resolve(decoder.decode(record.data));
             return;
           }
-          // Fallback: also handle plain text records (legacy tags)
           if (record.recordType === "text") {
             const decoder = new TextDecoder(record.encoding || "utf-8");
             resolve(decoder.decode(record.data));
@@ -82,11 +133,11 @@ export async function readFromNfc(
           }
         }
         reject(new Error("No compatible record found on NFC tag."));
-      });
+      }, { once: true });
 
       ndef.addEventListener("readingerror", () => {
         reject(new Error("Failed to read NFC tag."));
-      });
+      }, { once: true });
     } catch (error) {
       reject(error);
     }

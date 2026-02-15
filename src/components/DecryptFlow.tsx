@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Fingerprint, KeyRound, CheckCircle2, AlertCircle, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { decryptText } from "@/lib/crypto";
-import { readFromNfc, isNfcSupported } from "@/lib/nfc";
+import { readFromNfc, isNfcSupported, claimNfcAdapter, releaseNfcAdapter } from "@/lib/nfc";
 import { authenticateBiometric, registerBiometric, hasBiometricRegistered, isBiometricSupported } from "@/lib/biometrics";
 import NfcPulse from "@/components/NfcPulse";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +25,12 @@ const DecryptFlow = ({ onBack }: Props) => {
   const [errorMsg, setErrorMsg] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
+
+  // Claim the NFC adapter early to prevent Android OS from intercepting tags.
+  useEffect(() => {
+    claimNfcAdapter().catch(() => {});
+    return () => releaseNfcAdapter();
+  }, []);
 
   const startScan = async () => {
     setStep("scan");
