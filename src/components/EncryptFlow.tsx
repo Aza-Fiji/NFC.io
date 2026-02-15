@@ -28,16 +28,20 @@ const EncryptFlow = ({ onBack }: Props) => {
       try {
         if (!hasBiometricRegistered()) {
           await registerBiometric();
+        } else {
+          const ok = await authenticateBiometric();
+          if (!ok) {
+            setErrorMsg("Biometric authentication failed.");
+            setStep("error");
+            return;
+          }
         }
-        const ok = await authenticateBiometric();
-        if (!ok) {
-          setErrorMsg("Biometric authentication failed.");
-          setStep("error");
-          return;
+        // Reuse existing bio key if available (e.g. imported backup), otherwise generate new
+        let bioPassword = localStorage.getItem("nfc-vault-bio-key");
+        if (!bioPassword) {
+          bioPassword = generateRandomPassword();
+          localStorage.setItem("nfc-vault-bio-key", bioPassword);
         }
-        // Use a random password stored alongside biometric
-        const bioPassword = generateRandomPassword();
-        localStorage.setItem("nfc-vault-bio-key", bioPassword);
         await startWrite(bioPassword);
       } catch (e: any) {
         const msg = e.message?.includes("not enabled in this document")

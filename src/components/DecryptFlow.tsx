@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { decryptText } from "@/lib/crypto";
 import { readFromNfc, isNfcSupported } from "@/lib/nfc";
-import { authenticateBiometric, isBiometricSupported } from "@/lib/biometrics";
+import { authenticateBiometric, registerBiometric, hasBiometricRegistered, isBiometricSupported } from "@/lib/biometrics";
 import NfcPulse from "@/components/NfcPulse";
 import { useToast } from "@/hooks/use-toast";
 
@@ -50,27 +50,42 @@ const DecryptFlow = ({ onBack }: Props) => {
     try {
       let key = password;
       if (authMethod === "bio") {
-        let ok: boolean;
-        try {
-          ok = await authenticateBiometric();
-        } catch (bioErr: any) {
-          const msg = bioErr.message?.includes("not enabled in this document")
-            ? "Biometric auth isn't available in this browser context. Please install the app on your Android device and try again."
-            : bioErr.message || "Biometric error.";
-          setErrorMsg(msg);
-          setStep("error");
-          return;
-        }
-        if (!ok) {
-          setErrorMsg("Biometric authentication failed.");
-          setStep("error");
-          return;
-        }
         key = localStorage.getItem("nfc-vault-bio-key") || "";
         if (!key) {
-          setErrorMsg("No biometric key found. The data may have been encrypted with a password.");
+          setErrorMsg("No biometric key found. The data may have been encrypted with a password, or you need to import a backup key first.");
           setStep("error");
           return;
+        }
+
+        // If no passkey on this device, register one first (e.g. after importing backup key)
+        if (!hasBiometricRegistered()) {
+          try {
+            await registerBiometric();
+          } catch (regErr: any) {
+            const msg = regErr.message?.includes("not enabled in this document")
+              ? "Biometric auth isn't available in this browser context. Please install the app on your Android device and try again."
+              : regErr.message || "Biometric registration error.";
+            setErrorMsg(msg);
+            setStep("error");
+            return;
+          }
+        } else {
+          let ok: boolean;
+          try {
+            ok = await authenticateBiometric();
+          } catch (bioErr: any) {
+            const msg = bioErr.message?.includes("not enabled in this document")
+              ? "Biometric auth isn't available in this browser context. Please install the app on your Android device and try again."
+              : bioErr.message || "Biometric error.";
+            setErrorMsg(msg);
+            setStep("error");
+            return;
+          }
+          if (!ok) {
+            setErrorMsg("Biometric authentication failed.");
+            setStep("error");
+            return;
+          }
         }
       }
 
