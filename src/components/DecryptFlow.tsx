@@ -172,6 +172,13 @@ const DecryptFlow = ({ onBack }: Props) => {
                   </button>
                 </div>
 
+                {authMethod === "bio" && (
+                  <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                    <p className="font-medium mb-1">⚠️ Device-bound key</p>
+                    <p>This will only work if the tag was encrypted with biometrics on this device.</p>
+                  </div>
+                )}
+
                 {authMethod === "password" && (
                   <Input
                     type="password"
