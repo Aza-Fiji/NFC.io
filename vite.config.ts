@@ -3,7 +3,9 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
-
+export default defineConfig({
+  base: "/NFC.io/",
+})
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
