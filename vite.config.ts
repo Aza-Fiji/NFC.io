@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => ({
         background_color: "#f5f6f8",
         display: "standalone",
         orientation: "portrait",
-        start_url: "/",
+        start_url: "/NFC.io/",
         icons: [
           {
             src: "/pwa-192x192.png",
