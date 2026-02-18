@@ -5,8 +5,8 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => ({
-    server: {
     base: "/NFC.io/",
+    server: {
     host: "::",
     port: 8080,
     hmr: {
